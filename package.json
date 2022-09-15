@@ -8,10 +8,9 @@
     "prebuild": "yarn clean",
     "build": "webpack",
     "postbuild": "tsc -b .",
-    "clean": "rimraf ./build",
+    "clean": "rm -rf ./build",
     "format": "prettier --write .",
     "lint": "eslint . --fix --ext .ts,.tsx --max-warnings 0",
-    "preinstall": "yarn install",
     "postinstall": "yarn build"
   },
   "bin": {
