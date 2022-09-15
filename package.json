@@ -10,7 +10,8 @@
     "postbuild": "tsc -b .",
     "clean": "rimraf ./build",
     "format": "prettier --write .",
-    "lint": "eslint . --fix --ext .ts,.tsx --max-warnings 0"
+    "lint": "eslint . --fix --ext .ts,.tsx --max-warnings 0",
+    "postinstall": "yarn build"
   },
   "bin": {
     "stability": "build/bin.js"
