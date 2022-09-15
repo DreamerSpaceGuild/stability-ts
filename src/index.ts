@@ -10,6 +10,9 @@ import {
   ClassifierParameters,
   Answer,
   ArtifactType,
+  Artifact,
+  ScheduleParameters,
+  PromptParameters,
 } from 'stability-sdk/gooseai/generation/generation_pb'
 import { NodeHttpTransport } from '@improbable-eng/grpc-web-node-http-transport'
 import uuid4 from 'uuid4'
@@ -27,7 +30,7 @@ type DraftStabilityOptions = Partial<{
   debug: boolean
   requestId: string
   samples: number
-  engine: 'stable-diffusion-v1'
+  engine: 'stable-diffusion-v1-5'
   host: string
   seed: number
   width: number
@@ -35,7 +38,10 @@ type DraftStabilityOptions = Partial<{
   diffusion: keyof typeof diffusionMap
   steps: number
   cfgScale: number
-  noStore: boolean
+  noStore: boolean,
+  initImage: Uint8Array | string | null,
+  startSchedule: number,
+  endSchedule: number
 }>
 
 type RequiredStabilityOptions = {
@@ -69,7 +75,7 @@ const withDefaults: (
   return {
     ...draft,
     host: draft.host ?? 'https://grpc.stability.ai:443',
-    engine: draft.engine ?? 'stable-diffusion-v1',
+    engine: draft.engine ?? 'stable-diffusion-v1-5',
     requestId,
     seed: draft.seed ?? range(0, 4294967295),
     width: draft.width ?? 512,
@@ -81,6 +87,9 @@ const withDefaults: (
     outDir: draft.outDir ?? path.join(process.cwd(), '.out', requestId),
     debug: Boolean(draft.debug),
     noStore: Boolean(draft.noStore),
+    initImage: draft.initImage ?? null,
+    startSchedule: draft.startSchedule ?? 0.5,
+    endSchedule: draft.endSchedule ?? 0.5
   }
 }
 
@@ -100,6 +109,9 @@ export const generate: (
     samples,
     outDir,
     prompt: promptText,
+    initImage,
+    startSchedule,
+    endSchedule,
     apiKey,
     noStore,
     debug,
@@ -120,6 +132,18 @@ export const generate: (
   prompt.setText(promptText)
   request.addPrompt(prompt)
 
+  if (initImage) {
+    const initArtifact = new Artifact()
+    initArtifact.setType(1) // init image type
+    initArtifact.setBinary(initImage)
+    const imgPrompt = new Prompt()
+    imgPrompt.setArtifact(initArtifact)
+    const initParameters = new PromptParameters()
+    initParameters.setInit(true)
+    imgPrompt.setParameters(initParameters)
+    request.addPrompt(imgPrompt)
+  }
+
   const image = new ImageParameters()
   image.setWidth(width)
   image.setHeight(height)
@@ -137,6 +161,13 @@ export const generate: (
   const sampler = new SamplerParameters()
   sampler.setCfgScale(cfgScale)
   step.setSampler(sampler)
+
+  if (initImage) {
+    const schedule = new ScheduleParameters()
+    schedule.setStart(startSchedule)
+    schedule.setEnd(endSchedule)
+    step.setSchedule(schedule)
+  }
 
   image.addParameters(step)
 
